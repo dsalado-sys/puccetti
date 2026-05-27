@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Puccetti · Localizar activo inmobiliario</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="/static/css/style.css?v=20260520" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">P</span>
+      <div class="brand-text">
+        <strong>PUCCETTI</strong>
+        <small>Localización de activos inmobiliarios</small>
+      </div>
+    </div>
+    <nav class="topbar-actions">
+      <button id="btn-normativa" class="link-btn" title="Normativa de superficies (Anexo I)">Normativa</button>
+      <button id="btn-help" class="link-btn" title="Cómo se usa">¿Cómo funciona?</button>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar" id="sidebar">
+      <section class="tabs">
+        <button class="tab active" data-tab="mapa">Mapa</button>
+        <button class="tab" data-tab="rc">RC</button>
+        <button class="tab" data-tab="dir">Dirección</button>
+        <button class="tab" data-tab="file">Planimetría</button>
+      </section>
+
+      <section class="tab-panel active" data-panel="mapa">
+        <h2>Click sobre el mapa</h2>
+        <p class="hint">
+          Haz clic sobre cualquier parcela. La ficha catastral aparecerá
+          automáticamente debajo.
+        </p>
+      </section>
+
+      <section class="tab-panel" data-panel="rc">
+        <h2>Buscar por referencia catastral</h2>
+        <form id="form-rc" class="form">
+          <label>
+            <span>Referencia catastral (14 o 20 caracteres)</span>
+            <input type="text" name="rc" placeholder="Ej: 1234567AB1234C0001DE"
+                   minlength="14" maxlength="20" required autocomplete="off" />
+          </label>
+          <button type="submit" class="primary">Localizar</button>
+        </form>
+      </section>
+
+      <section class="tab-panel" data-panel="dir">
+        <h2>Buscar por dirección</h2>
+        <form id="form-dir" class="form">
+          <label><span>Provincia</span>
+            <input type="text" name="provincia" placeholder="SEVILLA" required /></label>
+          <label><span>Municipio</span>
+            <input type="text" name="municipio" placeholder="RONQUILLO" required /></label>
+          <div class="row">
+            <label><span>Tipo vía</span>
+              <input type="text" name="tipo_via" placeholder="CL" required /></label>
+            <label class="grow"><span>Calle</span>
+              <input type="text" name="calle" placeholder="MAESTRO FALLA" required /></label>
+          </div>
+          <label><span>Número</span>
+            <input type="text" name="numero" placeholder="45" required /></label>
+          <button type="submit" class="primary">Localizar</button>
+        </form>
+      </section>
+
+      <section class="tab-panel" data-panel="file">
+        <h2>Importar planimetría externa</h2>
+        <p class="hint">
+          Arrastra uno o varios archivos
+          <code>GeoJSON · SHP · GPKG · KML · DXF · ZIP</code>.
+          Para Shapefile aporta también los sidecars
+          <code>.shx · .dbf · .prj</code> (selecciona todos juntos o sube un ZIP).
+        </p>
+        <div id="dropzone" class="dropzone">
+          <div class="dropzone-inner">
+            <span class="dropzone-icon">+</span>
+            <p><strong>Arrastra los archivos</strong> o haz clic para subir</p>
+            <small id="dropzone-filename">Sin archivo</small>
+          </div>
+          <input type="file" id="file-input" multiple
+                 accept=".geojson,.json,.shp,.shx,.dbf,.prj,.cpg,.gpkg,.kml,.gml,.dxf,.zip" hidden />
+        </div>
+        <label>
+          <span>CRS de origen (si el archivo no lo trae)</span>
+          <input type="text" id="file-crs" placeholder="EPSG:25830" />
+        </label>
+        <button id="btn-upload" type="button" class="primary" disabled>
+          Localizar planimetría
+        </button>
+      </section>
+
+      <section id="status" class="status hidden">
+        <div class="spinner"></div>
+        <p id="status-msg">Consultando Catastro…</p>
+      </section>
+
+      <section id="ficha" class="ficha hidden">
+        <header class="ficha-header">
+          <div>
+            <small class="ficha-tag" id="ficha-fuente">—</small>
+            <h2 id="ficha-direccion">—</h2>
+            <p class="ficha-ubicacion" id="ficha-ubicacion">—</p>
+          </div>
+        </header>
+
+        <dl class="ficha-grid">
+          <div><dt>Referencia catastral</dt><dd id="f-rc" class="mono">—</dd></div>
+          <div><dt>Superficie catastral</dt><dd id="f-sup">—</dd></div>
+          <div><dt>Uso catastral</dt><dd id="f-uso">—</dd></div>
+        </dl>
+
+        <section class="ficha-bloque" id="bloque-edificio">
+          <h3>Edificación</h3>
+          <dl class="ficha-grid">
+            <div><dt>Plantas</dt><dd id="f-plantas">—</dd></div>
+            <div><dt>Año construcción</dt><dd id="f-anio">—</dd></div>
+            <div><dt>Sup. construida</dt><dd id="f-supc">—</dd></div>
+            <div><dt>Sótanos</dt><dd id="f-sotanos">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="ficha-bloque hidden" id="bloque-agregados">
+          <h3>Conjunto del edificio</h3>
+          <dl class="ficha-grid">
+            <div><dt>Referencias catastrales</dt><dd id="ag-num-ref">—</dd></div>
+            <div><dt>Σ Sup. construida</dt><dd id="ag-suma-sup">—</dd></div>
+            <div><dt>Edificabilidad result.</dt><dd id="ag-edificabilidad">—</dd></div>
+            <div><dt>Viviendas</dt><dd id="ag-num-viv">—</dd></div>
+            <div><dt>Densidad viviendas</dt><dd id="ag-densidad">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="ficha-bloque hidden" id="bloque-subref">
+          <h3>
+            Referencias catastrales del edificio
+            <span class="badge" id="subref-count">0</span>
+          </h3>
+          <p class="hint">
+            Esta parcela física contiene varias unidades (pisos, locales…).
+            Haz click sobre cualquiera para cargar su ficha individual.
+          </p>
+          <ul class="subref-list" id="subref-list"></ul>
+        </section>
+
+        <section class="ficha-acciones">
+          <button type="button" id="btn-abrir-analisis" class="action gold full">
+            Análisis del activo →
+          </button>
+        </section>
+
+        <section class="ficha-acciones">
+          <a id="btn-pdf" class="action ghost" download>Descargar PDF</a>
+          <a id="btn-geojson" class="action ghost" download>Descargar GeoJSON</a>
+        </section>
+      </section>
+
+      <section id="error" class="error hidden">
+        <strong>No se pudo completar la búsqueda</strong>
+        <p id="error-msg">—</p>
+      </section>
+    </aside>
+
+    <section class="map-wrap">
+      <div id="map"></div>
+      <div class="map-legend">
+        <span><i class="dot dot-gold"></i> Parcela catastral</span>
+        <span><i class="dot dot-white"></i> Planimetría externa</span>
+      </div>
+
+      <aside class="tools-panel hidden" id="tools-panel">
+        <header class="tools-panel-header">
+          <div>
+            <h2>Análisis del activo</h2>
+            <small id="tools-panel-subtitle">—</small>
+          </div>
+          <button type="button" class="tools-panel-close" id="tools-panel-close" aria-label="Cerrar">×</button>
+        </header>
+
+        <div class="tools-panel-body">
+          <section class="tools-bloque" id="bloque-simplificar">
+            <h3>Simplificación del contorno</h3>
+            <p class="hint">
+              Reduce el número de vértices del polígono catastral aplicando el
+              algoritmo Douglas-Peucker. Ajusta la tolerancia hasta encontrar
+              un contorno manejable sin perder superficie significativa.
+            </p>
+            <div class="simpl-control">
+              <label class="simpl-label">
+                <span>Tolerancia</span>
+                <output id="simpl-valor">0,0 m</output>
+              </label>
+              <input type="range" id="simpl-slider" min="0" max="10" step="0.1" value="0" />
+              <div class="simpl-quick">
+                <button type="button" data-tol="0">Original</button>
+                <button type="button" data-tol="0.5">0,5 m</button>
+                <button type="button" data-tol="1">1 m</button>
+                <button type="button" data-tol="2">2 m</button>
+                <button type="button" data-tol="5">5 m</button>
+              </div>
+            </div>
+            <dl class="ficha-grid simpl-stats">
+              <div><dt>Vértices</dt><dd id="simpl-vertices">— → —</dd></div>
+              <div><dt>Diferencia</dt><dd id="simpl-diff">—</dd></div>
+              <div><dt>Sup. original</dt><dd id="simpl-sup-orig">—</dd></div>
+              <div><dt>Sup. simplificada</dt><dd id="simpl-sup-simp">—</dd></div>
+            </dl>
+          </section>
+
+          <section class="tools-bloque" id="bloque-uso">
+            <h3>Uso deseado <span class="tag-spec">§2.5</span></h3>
+            <p class="hint">
+              Define las superficies mínimas obligatorias (Anexo I) y condiciona
+              el resto del análisis.
+            </p>
+            <div class="form">
+              <div class="grid-2">
+                <label>
+                  <span>Uso</span>
+                  <select id="sel-uso">
+                    <option value="">— sin definir —</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Categoría</span>
+                  <select id="sel-categoria" disabled>
+                    <option value="">—</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="tools-bloque" id="bloque-urbanismo">
+            <h3>Análisis urbanístico <span class="tag-spec">§2.3</span></h3>
+            <p class="hint">
+              Introduce los parámetros del PGOU del municipio. La mayoría de
+              planeamientos no están digitalizados: consulta el documento y
+              transcribe los valores aquí.
+            </p>
+            <div class="form">
+              <label>
+                <span>Edificabilidad (m²t/m²s)</span>
+                <input type="number" step="0.01" min="0" id="urb-edificabilidad" placeholder="p.ej. 2,5" />
+              </label>
+              <div class="grid-2">
+                <label><span>Plantas máx</span>
+                  <input type="number" step="1" min="0" id="urb-plantas-max" /></label>
+                <label><span>Ocupación máx (%)</span>
+                  <input type="number" step="1" min="0" max="100" id="urb-ocupacion-max" /></label>
+              </div>
+
+              <fieldset class="fieldset-grupo">
+                <legend>Retranqueos (m)</legend>
+                <div class="grid-2">
+                  <label><span>Frontal</span>
+                    <input type="number" step="0.1" min="0" id="urb-retr-frontal" /></label>
+                  <label><span>Trasero</span>
+                    <input type="number" step="0.1" min="0" id="urb-retr-trasero" /></label>
+                  <label><span>Lateral izq.</span>
+                    <input type="number" step="0.1" min="0" id="urb-retr-lat-izq" /></label>
+                  <label><span>Lateral der.</span>
+                    <input type="number" step="0.1" min="0" id="urb-retr-lat-der" /></label>
+                </div>
+              </fieldset>
+
+              <label>
+                <span>Usos permitidos</span>
+                <div id="urb-usos-permitidos" class="checks-grid"></div>
+              </label>
+
+              <fieldset class="fieldset-grupo">
+                <legend>Patios mínimos</legend>
+                <div class="grid-2">
+                  <label><span>Luz recta mín. (m)</span>
+                    <input type="number" step="0.1" min="0" id="urb-patio-luz" /></label>
+                  <label><span>Superficie mín. (m²)</span>
+                    <input type="number" step="0.5" min="0" id="urb-patio-sup" /></label>
+                </div>
+              </fieldset>
+
+              <fieldset class="fieldset-grupo">
+                <legend>Cómputo</legend>
+                <div class="checks-grid">
+                  <label class="check-inline">
+                    <input type="checkbox" id="urb-atico-edif" />
+                    Ático computa edificabilidad
+                  </label>
+                  <label class="check-inline">
+                    <input type="checkbox" id="urb-atico-plantas" />
+                    Ático computa plantas
+                  </label>
+                  <label class="check-inline">
+                    <input type="checkbox" id="urb-sotano-edif" />
+                    Sótano computa edificabilidad
+                  </label>
+                  <label class="check-inline">
+                    <input type="checkbox" id="urb-sotano-plantas" />
+                    Sótano computa plantas
+                  </label>
+                </div>
+              </fieldset>
+
+              <div class="grid-2">
+                <label><span>Fuente</span>
+                  <input type="text" id="urb-fuente" placeholder="PGOU Sevilla 2018" /></label>
+                <label><span>Fecha consulta</span>
+                  <input type="date" id="urb-fecha" /></label>
+              </div>
+              <label>
+                <span>Notas</span>
+                <textarea id="urb-notas" rows="2" placeholder="Observaciones sobre el planeamiento"></textarea>
+              </label>
+              <div class="form-status" id="urb-status"></div>
+            </div>
+          </section>
+
+          <section class="tools-bloque" id="bloque-alertas">
+            <h3>Alertas y condicionantes</h3>
+            <ul class="alertas-list" id="alertas-list">
+              <li class="alerta-vacia">Sin alertas registradas.</li>
+            </ul>
+          </section>
+
+          <section class="tools-bloque" id="bloque-diseno">
+            <h3>Parámetros de diseño <span class="tag-spec">§2.6</span></h3>
+            <p class="hint">
+              Valores por defecto del estudio. Ajústalos si el proyecto lo requiere.
+              <button type="button" class="link-inline" id="btn-diseno-reset">Restablecer</button>
+            </p>
+            <div class="form">
+              <fieldset class="fieldset-grupo">
+                <legend>Muros (m)</legend>
+                <div class="grid-2">
+                  <label><span>Fachada</span>
+                    <input type="number" step="0.01" min="0" id="dis-muro-fachada" /></label>
+                  <label><span>Medianero</span>
+                    <input type="number" step="0.01" min="0" id="dis-muro-medianero" /></label>
+                  <label><span>Sep. unidades</span>
+                    <input type="number" step="0.01" min="0" id="dis-sep-unidades" /></label>
+                  <label><span>Tabique interior</span>
+                    <input type="number" step="0.01" min="0" id="dis-tabique" /></label>
+                </div>
+              </fieldset>
+              <fieldset class="fieldset-grupo">
+                <legend>Circulación (m)</legend>
+                <div class="grid-2">
+                  <label><span>Pasillo</span>
+                    <input type="number" step="0.01" min="0" id="dis-pasillo" /></label>
+                  <label><span>Pasillo vivienda</span>
+                    <input type="number" step="0.01" min="0" id="dis-pasillo-viv" /></label>
+                  <label><span>Vestíbulo (Ø)</span>
+                    <input type="number" step="0.01" min="0" id="dis-vestibulo" /></label>
+                  <label><span>Apertura puerta</span>
+                    <input type="number" step="0.01" min="0" id="dis-puerta" /></label>
+                </div>
+              </fieldset>
+              <fieldset class="fieldset-grupo">
+                <legend>Patios</legend>
+                <div class="grid-2">
+                  <label><span>Luz recta mín. (m)</span>
+                    <input type="number" step="0.1" min="0" id="dis-patio-luz" /></label>
+                  <label><span>Superficie mín. (m²)</span>
+                    <input type="number" step="0.5" min="0" id="dis-patio-sup" /></label>
+                </div>
+              </fieldset>
+              <div class="form-status" id="dis-status"></div>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div id="help-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="help-close" aria-label="Cerrar">×</button>
+      <h2>Cómo se usa</h2>
+      <ol>
+        <li><strong>Mapa</strong>: haz click sobre una parcela y la ficha aparece al instante.</li>
+        <li><strong>RC</strong>: introduce la referencia catastral (14 ó 20 caracteres).</li>
+        <li><strong>Dirección</strong>: provincia + municipio + tipo de vía + calle + número.</li>
+        <li><strong>Planimetría</strong>: arrastra un archivo aportado por terceros; se localiza la parcela catastral correspondiente y se superpone la geometría.</li>
+      </ol>
+      <p class="hint">
+        Datos: Dirección General del Catastro (DGC) y PNOA del Instituto Geográfico Nacional.
+      </p>
+    </div>
+  </div>
+
+  <div id="normativa-modal" class="modal hidden">
+    <div class="modal-content modal-wide">
+      <button class="modal-close" id="normativa-close" aria-label="Cerrar">×</button>
+      <h2>Normativa de superficies mínimas — Andalucía</h2>
+      <p class="hint">
+        Tablas del Anexo I del documento de requisitos. Fuentes: Decreto 194/2010
+        Junta de Andalucía (apartamentos turísticos), VPO Andalucía (vivienda),
+        DB SUA del CTE. <strong>Los valores son editables</strong>: modifica una
+        celda y se guarda automáticamente en la base de datos.
+      </p>
+      <div class="normativa-acciones">
+        <button type="button" class="action ghost" id="normativa-reset">
+          Restablecer valores de fábrica
+        </button>
+        <span class="form-status" id="normativa-status"></span>
+      </div>
+      <nav class="norm-tabs">
+        <button class="norm-tab active" data-target="hotel">Hoteles, Hostales, Pensiones</button>
+        <button class="norm-tab" data-target="hotel_apartamento">Hoteles-Apartamento</button>
+        <button class="norm-tab" data-target="apt_edificios">Apt. turísticos (edificios)</button>
+        <button class="norm-tab" data-target="apt_conjuntos">Apt. turísticos (conjuntos)</button>
+        <button class="norm-tab" data-target="vivienda">Vivienda</button>
+      </nav>
+      <div id="normativa-body" class="normativa-body">
+        <p class="hint">Cargando…</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/static/js/app.js?v=20260520"></script>
+</body>
+</html>

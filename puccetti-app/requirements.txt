@@ -1,0 +1,15 @@
+geopandas>=1.0
+shapely>=2.0
+pandas>=2.0
+numpy>=1.26
+matplotlib>=3.8
+networkx>=3.2
+pydantic>=2.5
+pydantic-settings>=2.1
+streamlit>=1.32
+folium>=0.15
+streamlit-folium>=0.18
+owslib>=0.30
+requests>=2.31
+squarify>=0.4
+reportlab>=4.0

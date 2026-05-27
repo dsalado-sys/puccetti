@@ -1,0 +1,49 @@
+# ─── Python ─────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.ipynb_checkpoints/
+*.egg-info/
+
+# ─── Artefactos / temporales ────────────────
+**/_test.pdf
+**/_probe.py
+**/run.txt
+*.log
+
+# ─── Bases de datos locales (regenerables) ──
+**/normativa.db
+
+# ─── Salidas generadas por las apps ─────────
+**/output/
+**/.streamlit/secrets.toml
+
+# ─── Datos pesados (no versionar; permanecen en disco) ──
+# Patrones location-independent: ignoran estas carpetas/archivos
+# estén en la raíz o anidados (p.ej. dentro de Antiguo/).
+**/planos-edificios/
+**/planos-autocad/
+**/planos-autocad-dxf/
+**/DERA completo GPKG/
+**/recintos_municipales/
+*.ecw
+*.ECW
+*.dwg
+*.DWG
+**/BTN_POI_Poblaciones_gpkg.gpkg
+**/sevilla.gpkg
+
+# ─── IDE / OS ──────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+Desktop.ini
+.DS_Store

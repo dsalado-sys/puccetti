@@ -1,0 +1,6 @@
+streamlit>=1.32
+pillow>=10.0
+numpy>=1.26
+scipy>=1.11
+shapely>=2.0
+pandas>=2.0

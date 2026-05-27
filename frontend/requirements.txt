@@ -1,0 +1,10 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+pydantic>=2.5
+requests>=2.31
+geopandas>=0.14
+shapely>=2.0
+ESCatastroLib>=0.5
+ezdxf>=1.1
+reportlab>=4.0
