@@ -37,7 +37,6 @@ class Envolvente:
 
 def aplicar_retranqueos(
     parcela: Polygon,
-    lados: list[LadoParcela],
     params: Parametros,
 ) -> Polygon:
     """Aplica retranqueos diferenciados:
@@ -96,11 +95,10 @@ def detectar_patio(
 
 def construir_envolvente(
     parcela: Polygon,
-    lados: list[LadoParcela],
     params: Parametros,
 ) -> Envolvente:
     """Pipeline §2.4 completo: retranqueos -> huella -> N plantas -> patios."""
-    huella = aplicar_retranqueos(parcela, lados, params)
+    huella = aplicar_retranqueos(parcela, params)
     if huella.is_empty:
         raise ValueError("Tras retranqueos no queda espacio edificable.")
 
@@ -108,7 +106,7 @@ def construir_envolvente(
     espesor = params.diseno.espesor_muro_fachada
     interior_base = huella.buffer(-espesor)
     if interior_base.is_empty:
-        raise ValueError("Huella demasiado pequena para los espesores configurados.")
+        raise ValueError("Huella demasiado pequeña para los espesores configurados.")
 
     plantas: list[Planta] = []
     edif_acumulada = 0.0

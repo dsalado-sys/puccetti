@@ -192,7 +192,7 @@ params = Parametros(diseno=diseno, urbanismo=urb, programa=prog, seed=seed_val)
 #  PIPELINE  (usa `lados`, ya clasificados + corregidos en la barra lateral)
 # ======================================================================
 rl = resumen_lados(lados)
-envol = construir_envolvente(parc, lados, params)
+envol = construir_envolvente(parc, params)
 edif = generar_edificio(envol, lados, params, n_viviendas_por_planta=viv_manual,
                         seed=seed_val, n_candidatos=n_cand)
 cap = edif.capacidad

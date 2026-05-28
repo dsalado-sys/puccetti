@@ -68,8 +68,8 @@ def _orientacion_cardinal(az: float) -> str:
     perpendicular al lado)."""
     # azimut del normal exterior = azimut del lado + 90 (depende de winding).
     # Aqui devolvemos la orientacion del lado mismo; la app puede deducir el normal.
-    sectores = ['N','NE','E','SE','S','SW','W','NW']
-    idx = int(((az + 22.5) % 360) // 45)
+    sectores = ['N','NE','E','SE','S','SO','O','NO']
+    idx = int(((az + 12.5) % 360) // 45)
     return sectores[idx]
 
 

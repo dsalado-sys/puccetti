@@ -4,10 +4,10 @@ A2.2 (vivienda):
 - El acceso a la vivienda se realiza solo por el salon o vestibulo->salon.
 - Habitaciones NO conectan directamente con salon ni con cocina (siempre via pasillo).
 - Cocina puede integrarse en el salon (salon-cocina).
-- Banos accesibles desde pasillo, no desde cocina.
-- Al menos un bano no en suite exclusivo.
+- Baños accesibles desde pasillo, no desde cocina.
+- Al menos un baño no en suite exclusivo.
 - Ancho minimo pasillo vivienda 0.90 m.
-- Toda estancia que no sea bano/aseo necesita ventilacion natural directa.
+- Toda estancia que no sea baño/aseo necesita ventilacion natural directa.
 """
 from __future__ import annotations
 from dataclasses import dataclass
